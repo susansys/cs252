@@ -165,7 +165,7 @@ void * allocateObject( size_t size )
 
   // Add the ObjectHeader/Footer to the size and round the total size up to a multiple of
   // 8 bytes for alignment.
-  size_t roundedSize = (size + sizeof(struct ObjectHeader) + sizeof(struct ObjectFooter) + 7) & -8;
+  size_t roundedSize = (size + sizeof(struct ObjectHeader) + sizeof(struct ObjectFooter) + 7) & ~7;
 
   // Naively get memory from the OS every time
   void * _mem = getMemoryFromOS( roundedSize );
