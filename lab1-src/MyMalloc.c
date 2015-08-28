@@ -61,14 +61,14 @@ struct ObjectFooter {
 
   // # realloc calls
   static int _reallocCalls;
-  
+
   // # realloc calls
   static int _callocCalls;
 
+  static int _miniSize;
   // Free list is a sentinel
   static struct ObjectHeader _freeListSentinel; // Sentinel is used to simplify list operations
   static struct ObjectHeader *_freeList;
-
 
   //FUNCTIONS
 
@@ -112,6 +112,7 @@ void initialize()
 {
   // Environment var VERBOSE prints stats at end and turns on debugging
   // Default is on
+  miniSize = 8 + sizeof(struct ObjectHeader) + sizeof(struct ObjectFooter);
   _verbose = 1;
   const char * envverbose = getenv( "MALLOCVERBOSE" );
   if ( envverbose && !strcmp( envverbose, "NO") ) {
@@ -168,7 +169,10 @@ void * allocateObject( size_t size )
   size_t roundedSize = (size + sizeof(struct ObjectHeader) + sizeof(struct ObjectFooter) + 7) & ~7;
 
   // Naively get memory from the OS every time
-  void * _mem = getMemoryFromOS( roundedSize );
+  // void * _mem = getMemoryFromOS( roundedSize );
+  void *_mem = getMemoryFromFreeList( roundedSize);
+  
+
 
   // Store the size in the header
   struct ObjectHeader * o = (struct ObjectHeader *) _mem;
@@ -179,6 +183,46 @@ void * allocateObject( size_t size )
 
   // Return a pointer to usable memory
   return (void *) (o + 1);
+
+}
+
+void * getMemoryFromFreeList( size_t size )
+{
+  struct ObjectHeader* temp = &_freeList->next;
+  // Find the free block that is large enough to satisfy request
+  while(temp->_objectSize < size){
+      temp = temp->_next;
+  }
+  if(temp->_objectSize-miniSize >= 0) {
+  // If the new allocated mem is larger than miniSize, split it
+      splitMemChunk(temp, size);
+      return temp;
+  }
+  else {
+      return temp;
+  }
+}
+
+void spliMemChunk(ObjectHeader* header, size_t size) {
+    // This function will
+    // 1. Split large memory chunk according to the given rounded size
+    // 2. Create new footer1 for allocated memory.
+    // 3. Create new header2 for the left free memory.
+    // 4. Take care of 4 pointers for the new header2.
+    // 5. Take care of size for 4 object.
+    // 6. Set allocated flags for both allocated memory and left free memory
+    size_t leftFreeSize = header->_objectSize - size;
+    header->_allocated = 1;
+    header->_objectSize = size;
+
+    struct ObjectFooter *footer1 = (struct ObjectFooter *)(char *)header + size - sizeof(struct ObjectFooter);
+    footer1->_allocated = 1;
+    footer1->_objectSize = size;
+
+    struct ObjectHeader *header2 = (struct ObjectHeader *)(char *)header + size;
+
+
+
 
 }
 
