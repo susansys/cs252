@@ -191,11 +191,19 @@ void * allocateObject( size_t size )
 
 void * getMemoryFromFreeList( size_t size )
 {
-  struct ObjectHeader* temp = (struct ObjectHeader *)_freeList->_next;
+  struct ObjectHeader* temp = _freeList->_next;
   // Find the free block that is large enough to satisfy request
-  while(temp->_objectSize < size){
+  // TODO: Need to request a new 2MB block of memory if the current
+  // one whole is fully allocated
+  do {
+      if(temp->_allocated==0) {
+          if(temp->_objectSize >= size) {
+              break;
+          }
+      }
       temp = temp->_next;
-  }
+  }while(1);
+
   if(temp->_objectSize - size >= _miniSize) {
   // If the new allocated mem is larger than miniSize, split it
       splitMemChunk(temp, size);
@@ -203,7 +211,10 @@ void * getMemoryFromFreeList( size_t size )
   }
   else {
   // 1. Set allocated flags to 1
-  // 2. Set size
+      temp->_allocated = 1;
+
+      struct ObjectFooter * footer1 = (struct ObjectFooter *)((char *)temp + size - sizeof(struct ObjectFooter));
+      footer1->_allocated = 1;
       return temp;
   }
 }
@@ -221,11 +232,11 @@ void splitMemChunk(struct ObjectHeader * header, size_t size) {
     header->_allocated = 1;
     header->_objectSize = size;
 
-    struct ObjectFooter * footer1 = (struct ObjectFooter *)(char *)header + size - sizeof(struct ObjectFooter);
+    struct ObjectFooter * footer1 = (struct ObjectFooter *)((char *)header + size - sizeof(struct ObjectFooter));
     footer1->_allocated = 1;
     footer1->_objectSize = size;
 
-    struct ObjectHeader * header2 = (struct ObjectHeader *)(char *)header + size;
+    struct ObjectHeader * header2 = (struct ObjectHeader *)((char *)header + size);
     header2->_next = header->_next;
     header2->_prev = header->_prev;
     header->_prev->_next = header2;
@@ -233,7 +244,7 @@ void splitMemChunk(struct ObjectHeader * header, size_t size) {
     header2->_allocated = 0;
     header2->_objectSize = leftFreeSize;
 
-    struct ObjectFooter * footer2 = (struct ObjectFooter *)(char *)header + header->_objectSize - sizeof(struct ObjectFooter);
+    struct ObjectFooter * footer2 = (struct ObjectFooter *)((char *)header + header->_objectSize - sizeof(struct ObjectFooter));
     footer2->_allocated = 0;
     footer2->_objectSize = leftFreeSize;
 }
