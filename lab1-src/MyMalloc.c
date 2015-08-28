@@ -81,6 +81,9 @@ struct ObjectFooter {
   // Frees an object
   void freeObject( void * ptr );
 
+  // Split memory chunk
+  void splitMemChunk(struct ObjectHeader * header, size_t size);
+
   // Returns the size of an object
   size_t objectSize( void * ptr );
 
@@ -93,6 +96,8 @@ struct ObjectFooter {
 
   // Gets memory from the OS
   void * getMemoryFromOS( size_t size );
+
+  void * getMemoryFromFreeList ( size_t size);
 
   void increaseMallocCalls() { _mallocCalls++; }
 
@@ -112,7 +117,7 @@ void initialize()
 {
   // Environment var VERBOSE prints stats at end and turns on debugging
   // Default is on
-  miniSize = 8 + sizeof(struct ObjectHeader) + sizeof(struct ObjectFooter);
+  _miniSize = 8 + sizeof(struct ObjectHeader) + sizeof(struct ObjectFooter);
   _verbose = 1;
   const char * envverbose = getenv( "MALLOCVERBOSE" );
   if ( envverbose && !strcmp( envverbose, "NO") ) {
@@ -170,9 +175,7 @@ void * allocateObject( size_t size )
 
   // Naively get memory from the OS every time
   // void * _mem = getMemoryFromOS( roundedSize );
-  void *_mem = getMemoryFromFreeList( roundedSize);
-  
-
+  void * _mem = getMemoryFromFreeList( roundedSize);
 
   // Store the size in the header
   struct ObjectHeader * o = (struct ObjectHeader *) _mem;
@@ -188,22 +191,24 @@ void * allocateObject( size_t size )
 
 void * getMemoryFromFreeList( size_t size )
 {
-  struct ObjectHeader* temp = &_freeList->next;
+  struct ObjectHeader* temp = (struct ObjectHeader *)_freeList->_next;
   // Find the free block that is large enough to satisfy request
   while(temp->_objectSize < size){
       temp = temp->_next;
   }
-  if(temp->_objectSize-miniSize >= 0) {
+  if(temp->_objectSize - size >= _miniSize) {
   // If the new allocated mem is larger than miniSize, split it
       splitMemChunk(temp, size);
       return temp;
   }
   else {
+  // 1. Set allocated flags to 1
+  // 2. Set size
       return temp;
   }
 }
 
-void spliMemChunk(ObjectHeader* header, size_t size) {
+void splitMemChunk(struct ObjectHeader * header, size_t size) {
     // This function will
     // 1. Split large memory chunk according to the given rounded size
     // 2. Create new footer1 for allocated memory.
@@ -212,18 +217,25 @@ void spliMemChunk(ObjectHeader* header, size_t size) {
     // 5. Take care of size for 4 object.
     // 6. Set allocated flags for both allocated memory and left free memory
     size_t leftFreeSize = header->_objectSize - size;
+
     header->_allocated = 1;
     header->_objectSize = size;
 
-    struct ObjectFooter *footer1 = (struct ObjectFooter *)(char *)header + size - sizeof(struct ObjectFooter);
+    struct ObjectFooter * footer1 = (struct ObjectFooter *)(char *)header + size - sizeof(struct ObjectFooter);
     footer1->_allocated = 1;
     footer1->_objectSize = size;
 
-    struct ObjectHeader *header2 = (struct ObjectHeader *)(char *)header + size;
+    struct ObjectHeader * header2 = (struct ObjectHeader *)(char *)header + size;
+    header2->_next = header->_next;
+    header2->_prev = header->_prev;
+    header->_prev->_next = header2;
+    header->_next->_prev = header2;
+    header2->_allocated = 0;
+    header2->_objectSize = leftFreeSize;
 
-
-
-
+    struct ObjectFooter * footer2 = (struct ObjectFooter *)(char *)header + header->_objectSize - sizeof(struct ObjectFooter);
+    footer2->_allocated = 0;
+    footer2->_objectSize = leftFreeSize;
 }
 
 void freeObject( void * ptr )
