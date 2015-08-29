@@ -73,14 +73,14 @@ echo   "CS252: $LAB. $USER" `date` " Total: " $total of $totalmax >> total.out
 echo >> total.out
 
 cat total.out
-cat total.out >> .local.total.out
+#cat total.out >> .local.total.out
 echo
 
 #Do not remove or comment these lines. They are used for monitoring progress.
 labout=/homes/cs252/LABOUT/$LAB/$USER/total.txt
 cat total.out >> $labout
-git add *.c *.h  >> .local.git.out
-git commit -a -m "$total of $totalmax" >> .local.git.out
+#git add *.c *.h  >> .local.git.out
+#git commit -a -m "$total of $totalmax" >> .local.git.out
 
 
 
