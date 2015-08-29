@@ -81,6 +81,8 @@ struct ObjectFooter {
   // Frees an object
   void freeObject( void * ptr );
 
+  struct ObjectHeader * freeMemoryBlock(struct ObjectHeader * header, size_t size);
+
   // Split memory chunk
   void splitMemChunk(struct ObjectHeader * header, size_t size);
 
@@ -293,9 +295,48 @@ void * requestNewMemoryFromOS() {
 void freeObject( void * ptr )
 {
   // Add your code here
+  printf("\nIn freeObject()");
 
-  return;
+  struct ObjectHeader * header = (struct ObjectHeader *)ptr;
+  struct ObjectFooter * leftFooter = (struct ObjectFooter *)((char *)ptr - sizeof(struct ObjectFooter));
+  if(leftFooter->_allocated == 0) {
+      struct ObjectHeader * leftHeader =
+          (struct ObjectHeader *)((char *)leftFooter - leftFooter->_objectSize - sizeof(struct ObjectHeader));
+      leftHeader = freeMemoryBlock(leftHeader, leftHeader->_objectSize + header->_objectSize);
 
+      struct ObjectHeader * rightHeader = (struct ObjectHeader *)((char *)header + header->_objectSize);
+      if(rightHeader->_allocated == 0) {
+          leftHeader = freeMemoryBlock(leftHeader, leftHeader->_objectSize + rightHeader->_objectSize);
+          return;
+      }
+      else {
+          return;
+      }
+  }
+  else {
+    struct ObjectHeader * rightHeader = (struct ObjectHeader *)((char *)header + header->_objectSize);
+    if(rightHeader->_allocated == 0) {
+        header = freeMemoryBlock(header, header->_objectSize + rightHeader->_objectSize);
+        return;
+    }
+    else {
+        printf("\nBasic case, test1-3");
+        header = freeMemoryBlock(header, header->_objectSize);
+        return;
+    }
+  }
+  printf("\nNothing");
+}
+
+struct ObjectHeader * freeMemoryBlock( struct ObjectHeader * header, size_t size ) {
+    header->_objectSize = size;
+    header->_allocated = 0;
+
+    struct ObjectFooter * footer = (struct ObjectFooter *)((char *)header + size - sizeof(struct ObjectFooter));
+    footer->_objectSize = size;
+    footer->_allocated = 0;
+
+    return header;
 }
 
 size_t objectSize( void * ptr )
