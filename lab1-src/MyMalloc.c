@@ -86,6 +86,8 @@ struct ObjectFooter {
   void mergeIntoFreeList(struct ObjectHeader * newHeader, struct ObjectHeader * oldHeader);
 
   void insertIntoFreeList(struct ObjectHeader * header);
+
+  void removeFromFreeList(struct ObjectHeader * header);
   // Split memory chunk
   void splitMemChunk(struct ObjectHeader * header, size_t size);
 
@@ -219,12 +221,17 @@ void * getMemoryFromFreeList( size_t size )
       return temp;
   }
   else {
+  // The condition that return the whole block
   // 1. Set allocated flags to 1
+  // 2. Set object size to the rounded size
+  // 2. Take care of pointers of free list
       temp->_allocated = 1;
 
       struct ObjectFooter * footer1 = (struct ObjectFooter *)((char *)temp + size - sizeof(struct ObjectFooter));
       footer1->_allocated = 1;
       footer1->_objectSize = size;
+
+      removeFromFreeList(temp);
       return temp;
   }
 }
@@ -282,15 +289,15 @@ void * requestNewMemoryFromOS() {
     currentHeader->_objectSize = ArenaSize + sizeof(struct ObjectHeader) + sizeof(struct ObjectFooter); //2MB
     currentHeader->_allocated = 0;
 
-    _freeList->_prev->_next = currentHeader;
-    currentHeader->_prev = _freeList->_prev;
-    _freeList->_prev = currentHeader;
-    currentHeader->_next = _freeList;
-
-    // _freeList->_next = currentHeader;
+    // _freeList->_prev->_next = currentHeader;
+    // currentHeader->_prev = _freeList->_prev;
     // _freeList->_prev = currentHeader;
-    // currentHeader->_prev = _freeList;
     // currentHeader->_next = _freeList;
+
+    _freeList->_next = currentHeader;
+    _freeList->_prev = currentHeader;
+    currentHeader->_prev = _freeList;
+    currentHeader->_next = _freeList;
 
     currentFooter->_objectSize = currentHeader->_objectSize;
     currentFooter->_allocated = 0;
@@ -357,24 +364,37 @@ void mergeIntoFreeList(struct ObjectHeader * newHeader, struct ObjectHeader * ol
 
 void insertIntoFreeList(struct ObjectHeader * header) {
     struct ObjectHeader * prev = _freeList;
-    struct ObjectHeader * now = _freeList->_next;
+    struct ObjectHeader * now = prev->_next;
+    // printf("The pointer in the MyMalloc is at: %ld\n", (long)header);
     do {
-        if( prev->_allocated == now->_allocated == 2 ) {
+        if( prev->_allocated == 2 && now->_allocated == 2 ) {
             break;
         }
-        else {
-            if( (long)prev < (long)header < (long)now ) {
-                break;
-            }
+        if( (long)prev < (long)header && (long)header < (long)now ) {
+            break;
         }
         prev = now;
         now = now->_next;
     }while(1);
+    // printf("-----\nThe pointer of the prev is at: %ld\n", (long)prev-(long)_memStart);
+    // printf("The pointer of header is at: %ld\n", (long)header-(long)_memStart);
+    // printf("The pointer of the now is at: %ld\n", (long)now-(long)_memStart);
 
-    header->_next = prev->_next;
-    header->_prev = now->_prev;
+    header->_next = now;
+    header->_prev = prev;
     prev->_next = header;
     now->_prev = header;
+
+    return;
+}
+
+void removeFromFreeList(struct ObjectHeader * header) {
+    struct ObjectHeader * prev = header->_prev;
+    struct ObjectHeader * next = header->_next;
+
+    prev->_next = next;
+    next->_prev = prev;
+
 }
 
 size_t objectSize( void * ptr )
