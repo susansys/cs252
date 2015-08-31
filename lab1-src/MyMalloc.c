@@ -83,13 +83,15 @@ struct ObjectFooter {
 
   struct ObjectHeader * freeMemoryBlock(struct ObjectHeader * header, size_t size);
 
-  void mergeIntoFreeList(struct ObjectHeader * newHeader, struct ObjectHeader * oldHeader);
+  void mergeIntoFreeListWithLeftBlock(struct ObjectHeader * newHeader, struct ObjectHeader * oldHeader);
+
+  void mergeIntoFreeListWithRightBlock(struct ObjectHeader * newHeader, struct ObjectHeader * oldHeader);
 
   void insertIntoFreeList(struct ObjectHeader * header);
 
   void removeFromFreeList(struct ObjectHeader * header);
   // Split memory chunk
-  void splitMemChunk(struct ObjectHeader * header, size_t size);
+  void * splitMemChunk(struct ObjectHeader * header, size_t size);
 
   // Returns the size of an object
   size_t objectSize( void * ptr );
@@ -161,6 +163,9 @@ void initialize()
   currentHeader->_allocated = 0;
   currentHeader->_next = _freeList;
   currentHeader->_prev = _freeList;
+//printf("In initialization, the free list is at:%ld\n", (long)_freeList);
+//printf("In initialization, the currentHeader->next is at:%ld\n", (long)currentHeader->_next);
+//printf("In initialization, the currentHeader->prev is at:%ld\n", (long)currentHeader->_prev);
   currentFooter->_allocated = 0;
   currentFooter->_objectSize = currentHeader->_objectSize;
   _freeList->_prev = currentHeader;
@@ -183,9 +188,7 @@ void * allocateObject( size_t size )
   size_t roundedSize = (size + sizeof(struct ObjectHeader) + sizeof(struct ObjectFooter) + 7) & ~7;
 
   // Naively get memory from the OS every time
-  // void * _mem = getMemoryFromOS( roundedSize );
   void * _mem = getMemoryFromFreeList( roundedSize);
-
   // Store the size in the header
   struct ObjectHeader * o = (struct ObjectHeader *) _mem;
 
@@ -204,18 +207,18 @@ void * getMemoryFromFreeList( size_t size )
   // Find the free block that is large enough to satisfy request
   // one whole is fully allocated
   do {
-      if(temp->_allocated==0) {
-          if(temp->_objectSize >= size) {
-              break;
-          }
+      //if(temp->_allocated==0) {
+      if(temp->_objectSize >= size) {
+          break;
       }
+      //}
       temp = temp->_next;
       if(temp->_allocated == 2) {
           requestNewMemoryFromOS();
       }
   }while(1);
 
-  if(temp->_objectSize - size >= _miniSize) {
+  if(temp->_objectSize-size >= _miniSize) {
   // If the new allocated mem is larger than miniSize, split it
       splitMemChunk(temp, size);
       return temp;
@@ -236,7 +239,7 @@ void * getMemoryFromFreeList( size_t size )
   }
 }
 
-void splitMemChunk(struct ObjectHeader * header, size_t size) {
+void * splitMemChunk(struct ObjectHeader * header, size_t size) {
     // This function will
     // 1. Split large memory chunk according to the given rounded size
     // 2. Create new footer1 for allocated memory.
@@ -245,7 +248,6 @@ void splitMemChunk(struct ObjectHeader * header, size_t size) {
     // 5. Take care of size for 4 object.
     // 6. Set allocated flags for both allocated memory and left free memory
     size_t leftFreeSize = header->_objectSize - size;
-
     header->_allocated = 1;
     header->_objectSize = size;
 
@@ -264,6 +266,8 @@ void splitMemChunk(struct ObjectHeader * header, size_t size) {
     struct ObjectFooter * footer2 = (struct ObjectFooter *)((char *)header2 + header2->_objectSize - sizeof(struct ObjectFooter));
     footer2->_allocated = 0;
     footer2->_objectSize = leftFreeSize;
+
+    return header;
 }
 
 void * requestNewMemoryFromOS() {
@@ -306,7 +310,6 @@ void * requestNewMemoryFromOS() {
 void freeObject( void * ptr )
 {
   // Add your code here
-
   struct ObjectHeader * header = (struct ObjectHeader *)((char *)ptr - sizeof(struct ObjectHeader));
 
   struct ObjectFooter * leftFooter =
@@ -316,24 +319,23 @@ void freeObject( void * ptr )
       struct ObjectHeader * leftHeader =
           (struct ObjectHeader *)((char *)header - leftFooter->_objectSize);
       leftHeader = freeMemoryBlock(leftHeader, leftHeader->_objectSize + header->_objectSize);
+      //mergeIntoFreeList(leftHeader, header);
 
       struct ObjectHeader * rightHeader =
           (struct ObjectHeader *)((char *)header + header->_objectSize);
       if(rightHeader->_allocated == 0) {
           leftHeader = freeMemoryBlock(leftHeader, leftHeader->_objectSize + rightHeader->_objectSize);
-          mergeIntoFreeList(leftHeader, rightHeader);
+          mergeIntoFreeListWithLeftBlock(leftHeader, rightHeader);
           return;
       }
-      else {
-          return;
-      }
+      return;
   }
   else {
     struct ObjectHeader * rightHeader =
         (struct ObjectHeader *)((char *) header + header->_objectSize);
     if(rightHeader->_allocated == 0) {
         header = freeMemoryBlock(header, header->_objectSize + rightHeader->_objectSize);
-        mergeIntoFreeList(header, rightHeader);
+        mergeIntoFreeListWithRightBlock(header, rightHeader);
         return;
     }
     else {
@@ -354,14 +356,25 @@ struct ObjectHeader * freeMemoryBlock( struct ObjectHeader * header, size_t size
     return header;
 }
 
-void mergeIntoFreeList(struct ObjectHeader * newHeader, struct ObjectHeader * oldHeader) {
+void mergeIntoFreeListWithLeftBlock(struct ObjectHeader * newHeader, struct ObjectHeader * oldHeader) {
+    // oldHeader->_prev->_next = newHeader;
+    oldHeader->_next->_prev = newHeader;
+    newHeader->_next = oldHeader->_next;
+    // newHeader->_prev = oldHeader->_prev;
+    oldHeader->_next = NULL;
+    oldHeader->_prev = NULL;
+    return;
+}
+
+void mergeIntoFreeListWithRightBlock(struct ObjectHeader * newHeader, struct ObjectHeader * oldHeader) {
     oldHeader->_prev->_next = newHeader;
     oldHeader->_next->_prev = newHeader;
     newHeader->_next = oldHeader->_next;
     newHeader->_prev = oldHeader->_prev;
+    oldHeader->_next = NULL;
+    oldHeader->_prev = NULL;
     return;
 }
-
 void insertIntoFreeList(struct ObjectHeader * header) {
     struct ObjectHeader * prev = _freeList;
     struct ObjectHeader * now = prev->_next;
@@ -394,6 +407,9 @@ void removeFromFreeList(struct ObjectHeader * header) {
 
     prev->_next = next;
     next->_prev = prev;
+
+    header->_next = NULL;
+    header->_prev = NULL;
 
 }
 
