@@ -218,7 +218,7 @@ void * getMemoryFromFreeList( size_t size )
       }
   }while(1);
 
-  if(temp->_objectSize-size >= _miniSize) {
+  if(temp->_objectSize-size > _miniSize) {
   // If the new allocated mem is larger than miniSize, split it
       splitMemChunk(temp, size);
       return temp;
