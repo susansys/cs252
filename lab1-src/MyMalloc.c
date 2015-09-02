@@ -293,15 +293,15 @@ void * requestNewMemoryFromOS() {
     currentHeader->_objectSize = ArenaSize + sizeof(struct ObjectHeader) + sizeof(struct ObjectFooter); //2MB
     currentHeader->_allocated = 0;
 
-    // _freeList->_prev->_next = currentHeader;
-    // currentHeader->_prev = _freeList->_prev;
-    // _freeList->_prev = currentHeader;
-    // currentHeader->_next = _freeList;
-
-    _freeList->_next = currentHeader;
+    _freeList->_prev->_next = currentHeader;
+    currentHeader->_prev = _freeList->_prev;
     _freeList->_prev = currentHeader;
-    currentHeader->_prev = _freeList;
     currentHeader->_next = _freeList;
+
+   // _freeList->_next = currentHeader;
+   // _freeList->_prev = currentHeader;
+   //  currentHeader->_prev = _freeList;
+   //  currentHeader->_next = _freeList;
 
     currentFooter->_objectSize = currentHeader->_objectSize;
     currentFooter->_allocated = 0;
