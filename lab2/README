@@ -1,0 +1,8 @@
+Name:  Zhicheng Zhou
+Login: zhou267
+PUID:  0025600631
+
+
+1. The pwcheck.sh program is able to check your password strength based on the certain pattern.
+
+2. The backup.sh program can backup files that user specified on the argument once the original file has been changed. Also, it can notify user on that by sending e-mails.
