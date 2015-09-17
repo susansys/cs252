@@ -8,14 +8,14 @@ MSG="Error: Password length invalid."
 if egrep -q -w '.{6,32}' $1; then
     let SCORE=$SCORE+$LENGTH
     echo "length test passed"
-    
+
     # special char test
     if egrep -q '[#$+%@]' $1; then
         let SCORE=$SCORE+5
         echo "special char test passed"
     fi
 
-    # one number test 
+    # one number test
     if egrep -q '[0-9]' $1; then
         let SCORE=$SCORE+5
         echo "one number test passed"
@@ -24,7 +24,7 @@ if egrep -q -w '.{6,32}' $1; then
     # alpha char test
     if egrep -q '[[:alpha:]]' $1; then
         let SCORE=$SCORE+5
-        echo "alpha char test passed"     
+        echo "alpha char test passed"
     fi
 
     # alphanumeric char repetition test
