@@ -1,35 +1,27 @@
 #!/bin/bash
 Secs=$3
 
-fileName="$2/$(date +"%Y-%m-%d-%H-%M-%S")-$1"
-for i in `seq 1 $4`
-do
-    history[$i]=""
-done
+FileName="$2/$(date +"%Y-%m-%d-%H-%M-%S")-$1"
 
-
-cp $1 $fileName                           #copy file into backup dir
-count=1
-let mod=($count)%$4
-history[$mod]=$fileName                   #store first file name into
-                                          #history array
-
+cp $1 $FileName
+Count=1
+Mod=($Count)%$4
+History[$Mod]=$FileName
 
 while true; do
     sleep $Secs
 
-    if ! cmp -s $1 $fileName; then
-        # echo "Difference detected"
-        echo `diff $1 $fileName` > diff.txt
+    if ! cmp -s $1 $FileName; then
+        echo `diff $1 $FileName` > diff.txt
         /usr/bin/mailx -s "Backup" $USER < diff.txt
         latest="$2/$(date +"%Y-%m-%d-%H-%M-%S")-$1"
         cp $1 $latest
-        let count=$count+1
-        let mod=($count)%$4
-        fileName=$latest
-        if [[ $count -gt $4 ]]; then          #check if need to delete file
-            rm "${history[$mod]}"               #before save its name to history
+        let Count=$Count+1
+        let Mod=($Count)%$4
+        FileName=$latest
+        if [ $Count -gt $4 ]; then
+            rm "${History[$Mod]}"
         fi
-        history[$mod]=$fileName               #save the latest file name into
+        History[$Mod]=$FileName
     fi
 done
