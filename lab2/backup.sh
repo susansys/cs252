@@ -1,29 +1,32 @@
 #!/bin/bash
 Secs=$3
 
-FileName="$2/$(date +"%Y-%m-%d-%H-%M-%S")-$1"
+# get the filename from the path
+File=${1##*/}
 
-cp $1 $FileName
+NewName="$2/$(date +"%Y-%m-%d-%H-%M-%S")-$File"
+
+cp $File $NewName
 Count=1
 Mod=($Count)%$4
 # create a history array
-History[$Mod]=$FileName
+History[$Mod]=$NewName
 
 while true; do
     sleep $Secs
 
-    if ! cmp -s $1 $FileName; then
+    if ! cmp -s $1 $NewName; then
 
         # email user the difference
-        echo `diff $1 $FileName` > diff.txt
+        echo `diff $1 $NewName` > diff.txt
         /usr/bin/mailx -s "Backup" $USER < diff.txt
         rm diff.txt
-        latest="$2/$(date +"%Y-%m-%d-%H-%M-%S")-$1"
+        latest="$2/$(date +"%Y-%m-%d-%H-%M-%S")-$File"
 
         cp $1 $latest
         let Count=$Count+1
         let Mod=($Count)%$4
-        FileName=$latest
+        NewName=$latest
 
         # if the count reaches the limit,
         # then update the oldest backup with
@@ -31,6 +34,6 @@ while true; do
         if [ $Count -gt $4 ]; then
             rm "${History[$Mod]}"
         fi
-        History[$Mod]=$FileName
+        History[$Mod]=$NewName
     fi
 done
