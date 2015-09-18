@@ -6,3 +6,6 @@ PUID:  0025600631
 1. The pwcheck.sh program is able to check your password strength and finally output an password strength score based on the certain given pattern.
 
 2. The backup.sh program can backup files with different options, which can be specified by arguments. Also, it can notify user the difference between the last two backups by sending e-mials.
+Extra features:
+    1. The source file can be located anywhere
+    2. This backup script will create the all the necessary directory when the given directory does not exist.

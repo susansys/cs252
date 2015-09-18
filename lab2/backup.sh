@@ -1,10 +1,13 @@
 #!/bin/bash
+DiffFile=diff
 Secs=$3
 
 # get the filename from the path
 File=${1##*/}
-
+# create the new name pattern for backup files
 NewName="$2/$(date +"%Y-%m-%d-%H-%M-%S")-$File"
+# create path for backup files
+mkdir -p "$2"
 
 cp $File $NewName
 Count=1
@@ -18,9 +21,9 @@ while true; do
     if ! cmp -s $1 $NewName; then
 
         # email user the difference
-        echo `diff $1 $NewName` > diff.txt
-        /usr/bin/mailx -s "Backup" $USER < diff.txt
-        rm diff.txt
+        echo `diff $1 $NewName` > $DiffFile
+        /usr/bin/mailx -s "Backup" $USER < $DiffFile
+        rm $DiffFile
         latest="$2/$(date +"%Y-%m-%d-%H-%M-%S")-$File"
 
         cp $1 $latest
