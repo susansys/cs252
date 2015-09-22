@@ -36,12 +36,12 @@ SimpleCommand::insertArgument( char * argument )
 		_arguments = (char **) realloc( _arguments,
 				  _numberOfAvailableArguments * sizeof( char * ) );
 	}
-	
+
 	_arguments[ _numberOfArguments ] = argument;
 
 	// Add NULL argument at the end
 	_arguments[ _numberOfArguments + 1] = NULL;
-	
+
 	_numberOfArguments++;
 }
 
@@ -67,7 +67,7 @@ Command::insertSimpleCommand( SimpleCommand * simpleCommand )
 		_simpleCommands = (SimpleCommand **) realloc( _simpleCommands,
 			 _numberOfAvailableSimpleCommands * sizeof( SimpleCommand * ) );
 	}
-	
+
 	_simpleCommands[ _numberOfSimpleCommands ] = simpleCommand;
 	_numberOfSimpleCommands++;
 }
@@ -79,7 +79,7 @@ Command:: clear()
 		for ( int j = 0; j < _simpleCommands[ i ]->_numberOfArguments; j ++ ) {
 			free ( _simpleCommands[ i ]->_arguments[ j ] );
 		}
-		
+
 		free ( _simpleCommands[ i ]->_arguments );
 		free ( _simpleCommands[ i ] );
 	}
@@ -111,7 +111,7 @@ Command::print()
 	printf("\n");
 	printf("  #   Simple Commands\n");
 	printf("  --- ----------------------------------------------------------\n");
-	
+
 	for ( int i = 0; i < _numberOfSimpleCommands; i++ ) {
 		printf("  %-3d ", i );
 		for ( int j = 0; j < _simpleCommands[i]->_numberOfArguments; j++ ) {
@@ -126,7 +126,7 @@ Command::print()
 		_inputFile?_inputFile:"default", _errFile?_errFile:"default",
 		_background?"YES":"NO");
 	printf( "\n\n" );
-	
+
 }
 
 void
@@ -148,7 +148,7 @@ Command::execute()
 
 	// Clear to prepare for next command
 	clear();
-	
+
 	// Print new prompt
 	prompt();
 }
@@ -172,4 +172,3 @@ main()
 	Command::_currentCommand.prompt();
 	yyparse();
 }
-

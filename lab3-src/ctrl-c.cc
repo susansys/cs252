@@ -20,7 +20,7 @@ main()
 	printf( "Type ctrl-c or \"exit\"\n");
 	sigset( SIGINT, disp );
 	for (;;) {
-		
+
 		char s[ 20 ];
 		printf( "prompt>");
 		fflush( stdout );

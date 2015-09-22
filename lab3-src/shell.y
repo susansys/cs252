@@ -30,24 +30,24 @@ int yylex();
 
 %%
 
-goal:	
+goal:
 	commands
 	;
 
-commands: 
+commands:
 	command
-	| commands command 
+	| commands command
 	;
 
 command: simple_command
         ;
 
-simple_command:	
+simple_command:
 	command_and_args iomodifier_opt NEWLINE {
 		printf("   Yacc: Execute command\n");
 		Command::_currentCommand.execute();
 	}
-	| NEWLINE 
+	| NEWLINE
 	| error NEWLINE { yyerrok; }
 	;
 
@@ -74,7 +74,7 @@ argument:
 command_word:
 	WORD {
                printf("   Yacc: insert command \"%s\"\n", $1);
-	       
+
 	       Command::_currentSimpleCommand = new SimpleCommand();
 	       Command::_currentSimpleCommand->insertArgument( $1 );
 	}
@@ -85,7 +85,7 @@ iomodifier_opt:
 		printf("   Yacc: insert output \"%s\"\n", $2);
 		Command::_currentCommand._outFile = $2;
 	}
-	| /* can be empty */ 
+	| /* can be empty */
 	;
 
 %%

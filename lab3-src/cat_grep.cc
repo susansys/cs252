@@ -42,7 +42,7 @@ main(int argc, char **argv, char **envp)
 	// Output:   pipe
 	// Error:    defaulterr
 
-	// Create new pipe 
+	// Create new pipe
 
 	int fdpipe[2];
 	if ( pipe(fdpipe) == -1) {
@@ -52,7 +52,7 @@ main(int argc, char **argv, char **envp)
 
 	// Redirect input
 	dup2( defaultin, 0 );
-	
+
 	// Redirect output to pipe
 	dup2( fdpipe[ 1 ], 1 );
 
@@ -68,7 +68,7 @@ main(int argc, char **argv, char **envp)
 
 	if (pid == 0) {
 		//Child
-		
+
 		// close file descriptors that are not needed
 		close(fdpipe[0]);
 		close(fdpipe[1]);
@@ -100,7 +100,7 @@ main(int argc, char **argv, char **envp)
 		perror( "cat_grep: creat outfile" );
 		exit( 2 );
 	}
-	
+
 	dup2( outfd, 1 );
 	close( outfd );
 
@@ -112,7 +112,7 @@ main(int argc, char **argv, char **envp)
 		perror( "cat_grep: fork");
 		exit( 2 );
 	}
-	
+
 	if (pid == 0) {
 		//Child
 
@@ -122,7 +122,7 @@ main(int argc, char **argv, char **envp)
 		close( defaultin );
 		close( defaultout );
 		close( defaulterr );
-		
+
 		// You can use execvp() instead if the arguments are stored in an array
 		execlp(grep, cat, argv[2], (char *) 0);
 

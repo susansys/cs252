@@ -8,7 +8,7 @@ YACC=yacc
 
 all: shell cat_grep ctrl-c regular git-commit
 
-lex.yy.o: shell.l 
+lex.yy.o: shell.l
 	$(LEX) shell.l
 	$(CC) -c lex.yy.c
 
@@ -29,7 +29,7 @@ ctrl-c: ctrl-c.cc
 	$(CC) -o ctrl-c ctrl-c.cc
 
 regular: regular.cc
-	$(CC) -o regular regular.cc 
+	$(CC) -o regular regular.cc
 
 git-commit:
 	git add *.h *.cc *.l *.y >> .local.git.out
@@ -39,4 +39,3 @@ git-commit:
 
 clean:
 	rm -f lex.yy.c y.tab.c  y.tab.h shell ctrl-c regular cat_grep *.o
-
