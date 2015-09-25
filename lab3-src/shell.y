@@ -31,16 +31,13 @@ int yylex();
 %%
 
 goal:
-	commands
+	command_line
 	;
 
-commands:
-	command
-	| commands command
+command_line:
+	simple_command
+	| command_line simple_command
 	;
-
-command: simple_command
-        ;
 
 simple_command:
 	pipe_list iomodifier_list background_opt NEWLINE {
