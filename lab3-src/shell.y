@@ -13,7 +13,7 @@
 
 %token	<string_val> WORD
 
-%token 	NOTOKEN GREAT NEWLINE
+%token 	NOTOKEN GREAT LESS NEWLINE GREATGREAT GREATAMPERSAND GREATGREATAMPERSAND PIPE AMPERSAND
 
 %union	{
 		char   *string_val;
@@ -43,13 +43,18 @@ command: simple_command
         ;
 
 simple_command:
-	command_and_args iomodifier_opt NEWLINE {
-		printf("   Yacc: Execute command\n");
+	pipe_list iomodifier_list background_opt NEWLINE {
+		/*printf("   Yacc: Execute command\n");*/
 		Command::_currentCommand.execute();
 	}
 	| NEWLINE
 	| error NEWLINE { yyerrok; }
 	;
+
+pipe_list:
+    pipe_list PIPE command_and_args
+    | command_and_args
+    ;
 
 command_and_args:
 	command_word arg_list {
@@ -65,7 +70,7 @@ arg_list:
 
 argument:
 	WORD {
-               printf("   Yacc: insert argument \"%s\"\n", $1);
+               /*printf("   Yacc: insert argument \"%s\"\n", $1);*/
 
 	       Command::_currentSimpleCommand->insertArgument( $1 );\
 	}
@@ -73,20 +78,54 @@ argument:
 
 command_word:
 	WORD {
-               printf("   Yacc: insert command \"%s\"\n", $1);
+               /*printf("   Yacc: insert command \"%s\"\n", $1);*/
 
 	       Command::_currentSimpleCommand = new SimpleCommand();
 	       Command::_currentSimpleCommand->insertArgument( $1 );
 	}
 	;
 
+iomodifier_list:
+    iomodifier_list iomodifier_opt
+    | /* can be empty */
+    ;
+
 iomodifier_opt:
 	GREAT WORD {
-		printf("   Yacc: insert output \"%s\"\n", $2);
+		/*printf("   Yacc: insert output \"%s\"\n", $2);*/
 		Command::_currentCommand._outFile = $2;
 	}
-	| /* can be empty */
+    | GREATGREAT WORD {
+		/*printf("   Yacc:  append output \"%s\"\n", $2);*/
+        Command::_currentCommand._append = 1;
+		Command::_currentCommand._outFile = $2;
+	}
+    | GREATGREATAMPERSAND WORD {
+		/*printf("   Yacc: append output and stderr \"%s\"\n", $2);*/
+        /* TODO: Allocate memory for errFile*/
+        Command::_currentCommand._append = 1;
+		Command::_currentCommand._outFile = $2;
+        Command::_currentCommand._errFile = $2;
+	}
+    | GREATAMPERSAND WORD {
+		/*printf("   Yacc: insert output and stderr  \"%s\"\n", $2);*/
+        /* TODO: Allocate memory for errFile*/
+		Command::_currentCommand._outFile = $2;
+        Command::_currentCommand._errFile = $2;
+	}
+    | LESS WORD {
+		/*printf("   Yacc: insert input \"%s\"\n", $2);*/
+		Command::_currentCommand._inputFile = $2;
+	} /* can be empty */
 	;
+
+background_opt:
+    AMPERSAND {
+        /*printf("     Yacc: background mode is on\n");*/
+        Command::_currentCommand._background = 1;
+    }
+    | /* can be empty */
+    ;
 
 %%
 
