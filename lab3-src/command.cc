@@ -16,6 +16,7 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <signal.h>
+#include <fcntl.h>
 
 #include "command.h"
 
@@ -137,6 +138,7 @@ Command::execute()
 {
 	// Don't do anything if there are no simple commands
 	if ( _numberOfSimpleCommands == 0 ) {
+        clear();
 		prompt();
 		return;
 	}
@@ -148,7 +150,7 @@ Command::execute()
 	// For every simple command fork a new process
 	// Setup i/o redirection
 	// and call exec
-
+    execute_command();
 	// Clear to prepare for next command
 	clear();
 
@@ -157,6 +159,97 @@ Command::execute()
 }
 
 // Shell implementation
+
+void
+Command::execute_command()
+{
+    int defaultin = dup(0);
+    int defaultout = dup(1);
+    int defaulterr = dup(2);
+
+    int pid;
+    int fdpip[_numberOfSimpleCommands][2];
+    // TODO: initialize pipe
+
+    int infd;
+    int outfd;
+    int errfd;
+
+    // Redirect input
+    if(_inputFile) {
+        infd = open(_inputFile, O_RDONLY);
+        if(infd < 0) {
+            perror("create inputfile");
+            exit(2);
+        }
+        dup2(infd, 0);
+    }
+    else {
+        // Use default input
+        infd = dup(defaultin);
+    }
+
+    // Redirect output
+    if(_outFile) {
+
+        // >> out
+        if(_append) {
+            outfd = open(_outFile, O_RDWR |O_CREAT |O_APPEND, 0666);
+            if(outfd < 0) {
+                perror("create outfile");
+                exit(2);
+            }
+            dup2(outfd, 1);
+
+            // >>& out
+            if(_errFile) {
+                dup2(outfd, 2);
+            }
+        }
+        else {
+
+            // > out
+            outfd = open(_outFile, O_RDWR |O_CREAT |O_TRUNC, 0666);
+            dup2(outfd, 1);
+
+            // >& out
+            if(_errFile) {
+                dup2(outfd, 2);
+            }
+        }
+    }
+    else{
+        // Use default output and err;
+        outfd = dup(defaultout);
+        errfd = dup(defaulterr);
+    }
+
+    for (int i = 0; i < _numberOfSimpleCommands; i++) {
+        // Create new process for the first command
+        int pid = fork();
+
+        if (pid == -1) {
+            perror("cat_grep: fork\n");
+            exit(2);
+        }
+
+        if (pid == 0) {
+            // close file descriptors
+            printf("\n");
+            execvp(_simpleCommands[i]->_arguments[0], _simpleCommands[i]->_arguments);
+
+            // if it returns, something is wrong
+            perror("Unknown command when exec execvp\n");
+            exit( 2 );
+        }
+
+        if(_background == 0) {
+            if(waitpid(pid, 0, 0) == -1) {
+                perror("waitpid");
+            }
+        }
+    }
+}
 
 void
 Command::prompt()

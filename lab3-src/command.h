@@ -28,6 +28,7 @@ struct Command {
 	void prompt();
 	void print();
 	void execute();
+    void execute_command();
 	void clear();
 
 	Command();
