@@ -90,23 +90,25 @@ iomodifier_list:
 iomodifier_opt:
 	GREAT WORD {
 		/*printf("   Yacc: insert output \"%s\"\n", $2);*/
+        Command::_currentCommand._out_flag++;
 		Command::_currentCommand._outFile = $2;
 	}
     | GREATGREAT WORD {
 		/*printf("   Yacc:  append output \"%s\"\n", $2);*/
+        Command::_currentCommand._out_flag++;
         Command::_currentCommand._append = 1;
 		Command::_currentCommand._outFile = $2;
 	}
     | GREATGREATAMPERSAND WORD {
 		/*printf("   Yacc: append output and stderr \"%s\"\n", $2);*/
-        /* TODO: Allocate memory for errFile*/
+        Command::_currentCommand._out_flag++;
         Command::_currentCommand._append = 1;
 		Command::_currentCommand._outFile = $2;
         Command::_currentCommand._errFile = $2;
 	}
     | GREATAMPERSAND WORD {
 		/*printf("   Yacc: insert output and stderr  \"%s\"\n", $2);*/
-        /* TODO: Allocate memory for errFile*/
+        Command::_currentCommand._out_flag++;
 		Command::_currentCommand._outFile = $2;
         Command::_currentCommand._errFile = $2;
 	}

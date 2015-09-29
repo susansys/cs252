@@ -59,6 +59,7 @@ Command::Command()
 	_errFile = 0;
 	_background = 0;
     _append = 0;
+    _out_flag = 0;
 }
 
 void
@@ -94,9 +95,9 @@ Command:: clear()
 		free( _inputFile );
 	}
 
-	if ( _errFile ) {
-		free( _errFile );
-	}
+	//if ( _errFile ) {
+		//free( _errFile );
+	// }
 
 	_numberOfSimpleCommands = 0;
 	_outFile = 0;
@@ -104,6 +105,7 @@ Command:: clear()
 	_errFile = 0;
 	_background = 0;
     _append = 0;
+    _out_flag = 0;
 }
 
 void
@@ -120,7 +122,6 @@ Command::print()
 		for ( int j = 0; j < _simpleCommands[i]->_numberOfArguments; j++ ) {
 			printf("\"%s\" \t", _simpleCommands[i]->_arguments[ j ] );
 		}
-        printf("\n");
 	}
 
 	printf( "\n\n" );
@@ -144,7 +145,7 @@ Command::execute()
 	}
 
 	// Print contents of Command data structure
-	print();
+	//print();
 
 	// Add execution here
 	// For every simple command fork a new process
@@ -163,13 +164,22 @@ Command::execute()
 void
 Command::execute_command()
 {
+    if (_out_flag > 1) {
+        printf("Ambiguous output redirect\n");
+    }
     int defaultin = dup(0);
     int defaultout = dup(1);
     int defaulterr = dup(2);
 
     int pid;
-    int fdpip[_numberOfSimpleCommands][2];
-    // TODO: initialize pipe
+    int fdpip[_numberOfSimpleCommands-1][2];
+    // Pipe initialization
+    for ( int i = 0; i<_numberOfSimpleCommands-1; i++) {
+        if (pipe(fdpip[i]) == -1) {
+            perror("pipe");
+            exit(2);
+        }
+    }
 
     int infd;
     int outfd;
@@ -182,10 +192,8 @@ Command::execute_command()
             perror("create inputfile");
             exit(2);
         }
-        dup2(infd, 0);
     }
     else {
-        // Use default input
         infd = dup(defaultin);
     }
 
@@ -199,7 +207,6 @@ Command::execute_command()
                 perror("create outfile");
                 exit(2);
             }
-            dup2(outfd, 1);
 
             // >>& out
             if(_errFile) {
@@ -210,8 +217,10 @@ Command::execute_command()
 
             // > out
             outfd = open(_outFile, O_RDWR |O_CREAT |O_TRUNC, 0666);
-            dup2(outfd, 1);
-
+            if(outfd < 0) {
+                perror("create outfile");
+                exit(2);
+            }
             // >& out
             if(_errFile) {
                 dup2(outfd, 2);
@@ -225,8 +234,47 @@ Command::execute_command()
     }
 
     for (int i = 0; i < _numberOfSimpleCommands; i++) {
+        // For first command
+        if ( i == 0) {
+            // in: infd
+            // out: depends on if it's the only command
+            // err: errfd
+            dup2(infd, 0);
+
+            // only 1 command
+            // out: outfd
+            if (_numberOfSimpleCommands == 1) {
+                dup2(outfd, 1);
+            }
+            // more than 1 command
+            // out: pipe
+            else {
+                dup2(fdpip[i][1], 1);
+                close(fdpip[i][1]);
+            }
+        }
+        // For none last commands
+        // in: pipe
+        // out: pipe
+        // err: errfd
+        else if (i != _numberOfSimpleCommands - 1) {
+            dup2(fdpip[i-1][0], 0);
+            dup2(fdpip[i][1], 1);
+            close(fdpip[i-1][0]);
+            close(fdpip[i][1]);
+        }
+        // For last command
+        // in: pipe
+        // out: fdout
+        // err: errfd
+        else {
+            dup2(fdpip[i-1][0], 0);
+            close(fdpip[i-1][0]);
+            dup2(outfd, 1);
+        }
+
         // Create new process for the first command
-        int pid = fork();
+        pid = fork();
 
         if (pid == -1) {
             perror("cat_grep: fork\n");
@@ -235,18 +283,55 @@ Command::execute_command()
 
         if (pid == 0) {
             // close file descriptors
-            printf("\n");
+            close(defaultin);
+            close(defaultout);
+            close(defaulterr);
+
+            for (int j = 0; j < _numberOfSimpleCommands-1; j++) {
+                close(fdpip[j][0]);
+                close(fdpip[j][1]);
+            }
+            if(_inputFile){
+                close(infd);
+            }
+            if(_outFile){
+                close(outfd);
+            }
+
             execvp(_simpleCommands[i]->_arguments[0], _simpleCommands[i]->_arguments);
 
             // if it returns, something is wrong
             perror("Unknown command when exec execvp\n");
             exit( 2 );
         }
+        dup2(defaultin, 0);
+        dup2(defaultout, 1);
+        dup2(defaulterr, 2);
 
-        if(_background == 0) {
-            if(waitpid(pid, 0, 0) == -1) {
-                perror("waitpid");
-            }
+    }
+    for ( int i = 0; i < _numberOfSimpleCommands - 1; i++) {
+        close(fdpip[i][0]);
+        close(fdpip[i][1]);
+    }
+
+    // Restore fd
+    dup2(defaultin, 0);
+    dup2(defaultout, 1);
+    dup2(defaulterr, 2);
+    close(defaultin);
+    close(defaultout);
+    close(defaulterr);
+
+    if(_inputFile){
+        close(infd);
+    }
+    if(_outFile){
+        close(outfd);
+    }
+
+    if(!_background) {
+        if(waitpid(pid, 0, 0) == -1) {
+            perror("waitpid");
         }
     }
 }

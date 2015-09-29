@@ -1,2 +1,1 @@
-ls test3* > file-list
-ls -al `cat file-list` 
+cat file1.cc | ls nonexisting > err2 2>&1

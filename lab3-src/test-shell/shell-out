@@ -1,3 +1,2 @@
--rwxr-xr-x 1 cs252 cs252 309 Mar  7 18:39 test3
--rwxr-xr-x 1 cs252 cs252 450 Mar  7 18:39 test3-2
--rwxr-xr-x 1 cs252 cs252 575 Mar  7 18:39 test3-3
+myshell>	_arguments = (char **) malloc( _numberOfAvailableArguments * sizeof( char * ) );
+myshell>
