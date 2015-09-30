@@ -95,9 +95,9 @@ Command:: clear()
 		free( _inputFile );
 	}
 
-	//if ( _errFile ) {
-		//free( _errFile );
-	// }
+    if ( _errFile ) {
+        free( _errFile );
+     }
 
 	_numberOfSimpleCommands = 0;
 	_outFile = 0;
@@ -189,8 +189,8 @@ Command::execute_command()
     if(_inputFile) {
         infd = open(_inputFile, O_RDONLY);
         if(infd < 0) {
-            perror("create inputfile");
-            exit(2);
+            perror("inputfile");
+            exit(1);
         }
     }
     else {
@@ -204,13 +204,18 @@ Command::execute_command()
         if(_append) {
             outfd = open(_outFile, O_RDWR |O_CREAT |O_APPEND, 0666);
             if(outfd < 0) {
-                perror("create outfile");
-                exit(2);
+                perror("outfile");
+                exit(1);
             }
 
             // >>& out
             if(_errFile) {
-                dup2(outfd, 2);
+                errfd = open(_errFile, O_RDWR |O_CREAT |O_APPEND, 0666);
+                if(errfd < 0) {
+                    perror("errfile");
+                    exit(1);
+                }
+                //dup2(outfd, 2);
             }
         }
         else {
@@ -218,12 +223,17 @@ Command::execute_command()
             // > out
             outfd = open(_outFile, O_RDWR |O_CREAT |O_TRUNC, 0666);
             if(outfd < 0) {
-                perror("create outfile");
-                exit(2);
+                perror("outfile");
+                exit(1);
             }
             // >& out
             if(_errFile) {
-                dup2(outfd, 2);
+                errfd = open(_errFile, O_RDWR |O_CREAT |O_APPEND, 0666);
+                if(errfd < 0) {
+                    perror("errfile");
+                    exit(1);
+                }
+                //dup2(outfd, 2);
             }
         }
     }
@@ -252,6 +262,7 @@ Command::execute_command()
                 dup2(fdpip[i][1], 1);
                 close(fdpip[i][1]);
             }
+            dup2(errfd, 2);
         }
         // For none last commands
         // in: pipe
@@ -262,6 +273,7 @@ Command::execute_command()
             dup2(fdpip[i][1], 1);
             close(fdpip[i-1][0]);
             close(fdpip[i][1]);
+            dup2(errfd, 2);
         }
         // For last command
         // in: pipe
@@ -271,6 +283,7 @@ Command::execute_command()
             dup2(fdpip[i-1][0], 0);
             close(fdpip[i-1][0]);
             dup2(outfd, 1);
+            dup2(errfd, 2);
         }
 
         // Create new process for the first command
@@ -296,6 +309,9 @@ Command::execute_command()
             }
             if(_outFile){
                 close(outfd);
+            }
+            if(_errFile){
+                close(errfd);
             }
 
             execvp(_simpleCommands[i]->_arguments[0], _simpleCommands[i]->_arguments);
@@ -328,6 +344,9 @@ Command::execute_command()
     if(_outFile){
         close(outfd);
     }
+    if(_errFile){
+        close(errfd);
+    }
 
     if(!_background) {
         if(waitpid(pid, 0, 0) == -1) {
@@ -339,7 +358,9 @@ Command::execute_command()
 void
 Command::prompt()
 {
-	printf("myshell>");
+    if(isatty(0)) {
+	    printf("myshell>");
+    }
 	fflush(stdout);
 }
 

@@ -22,6 +22,7 @@
 %{
 //#define yylex yylex
 #include <stdio.h>
+#include <string.h>
 #include "command.h"
 void yyerror(const char * s);
 int yylex();
@@ -104,13 +105,13 @@ iomodifier_opt:
         Command::_currentCommand._out_flag++;
         Command::_currentCommand._append = 1;
 		Command::_currentCommand._outFile = $2;
-        Command::_currentCommand._errFile = $2;
+        Command::_currentCommand._errFile = strdup($2);
 	}
     | GREATAMPERSAND WORD {
 		/*printf("   Yacc: insert output and stderr  \"%s\"\n", $2);*/
         Command::_currentCommand._out_flag++;
 		Command::_currentCommand._outFile = $2;
-        Command::_currentCommand._errFile = $2;
+        Command::_currentCommand._errFile = strdup($2);
 	}
     | LESS WORD {
 		/*printf("   Yacc: insert input \"%s\"\n", $2);*/
