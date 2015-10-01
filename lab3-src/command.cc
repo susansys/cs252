@@ -145,7 +145,7 @@ Command::execute()
 	}
 
 	// Print contents of Command data structure
-	//print();
+	print();
 
 	// Add execution here
 	// For every simple command fork a new process
@@ -164,6 +164,10 @@ Command::execute()
 void
 Command::execute_command()
 {
+    if( !strcmp(_simpleCommands[0]->_arguments[0], "exit")) {
+        printf("Bye!\n");
+        exit( 1 );
+    }
     if (_out_flag > 1) {
         printf("Ambiguous output redirect\n");
     }
