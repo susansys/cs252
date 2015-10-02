@@ -28,6 +28,7 @@ struct Command {
 
 	void prompt();
 	void print();
+    void expandWildcardsIfNecessary(char * arg);
 	void execute();
     void execute_command();
 	void clear();

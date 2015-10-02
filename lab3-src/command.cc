@@ -63,6 +63,21 @@ Command::Command()
 }
 
 void
+Command::expandWildcardsIfNecessary(char * arg)
+{
+    // Return if arg does not contain '*' or '?'
+    while(*arg) {
+        if(strchr(arg, '*') && strchr(arg, '?')) {
+            Command::_currentSimpleCommand->insertArgument(arg);
+            return;
+        }
+        arg++;
+    }
+
+
+}
+
+void
 Command::insertSimpleCommand( SimpleCommand * simpleCommand )
 {
 	if ( _numberOfAvailableSimpleCommands == _numberOfSimpleCommands ) {
@@ -145,7 +160,7 @@ Command::execute()
 	}
 
 	// Print contents of Command data structure
-	print();
+	// print();
 
 	// Add execution here
 	// For every simple command fork a new process
