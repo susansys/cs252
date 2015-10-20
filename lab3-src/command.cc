@@ -85,8 +85,15 @@ SimpleCommand::expandWildcards(char * arg)
         position_1 = strchr(arg, '*')-arg;
         while (position_1 >= 0) {
             if((char)arg[position_1] == '/') {
-                pre = (char*)malloc(position_1+1);
-                strncpy(pre, arg, position_1+1);
+                pre = (char*)malloc(position_1+2);
+                // strncpy(pre, arg, position_1+1);
+                int i = 0;
+                while(i<=position_1) {
+                    pre[i] = arg[i];
+                    i++;
+                }
+                pre[i] = '\0';
+
                 break;
             }
             position_1--;
@@ -97,6 +104,7 @@ SimpleCommand::expandWildcards(char * arg)
         a = (char*)malloc(strlen(arg) - position_1);
         char * args = a;
         while ((char)arg[position_2]) {
+            // /dev/*
             if ((char)arg[position_2] != '/') {
                 *args = (char)arg[position_2];
                 args++;
@@ -185,11 +193,27 @@ SimpleCommand::expandWildcards(char * arg)
         if (regexec( &re, ent->d_name, 1, &match, 0) == 0) {
             // Add argument
             if (suf) {
-                // TODO:Combine pre and args with suf, then call expandWildcards again
-                Command::_currentSimpleCommand->insertArgument(strdup(ent->d_name));
+                char * argument = (char*)malloc(strlen(pre)+strlen(ent->d_name)+strlen(suf));
+
+                strcpy(argument, pre);
+                strcat(argument, ent->d_name);
+                strcat(argument, suf);
+                printf("--------argument: %s\n", argument);
+
+                Command::_currentSimpleCommand->expandWildcards(strdup(argument));
             }
             else {
-                Command::_currentSimpleCommand->insertArgument(strdup(ent->d_name));
+                if(*pre == '.') {
+                    Command::_currentSimpleCommand->insertArgument(strdup(ent->d_name));
+                }
+                else {
+                    char * argument = (char*)malloc(strlen(pre)+strlen(ent->d_name));
+                    strcpy(argument, pre);
+                    strcat(argument, ent->d_name);
+                    printf("--------argument: %s\n", argument);
+
+                    Command::_currentSimpleCommand->insertArgument(strdup(argument));
+                }
             }
         }
     }
