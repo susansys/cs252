@@ -63,11 +63,69 @@ SimpleCommand::expandWildcardsIfNecessary(char * arg)
 void
 SimpleCommand::expandWildcards(char * arg)
 {
-    // 1. Convert wildcard to regular expression
-    char * reg = (char*)malloc(2*strlen(arg) + 10);
-    // TODO: convert a to the first arg that contains '*'
-    char * a = arg;
+    // 1. Set up all the variables
+    // Set up pre
+    int position_1 = 0;
+    int position_2 = 0;
+    char * pre;
+    char * suf;
+    char * a;
+
+    // Current directory
+    if (!strchr(arg, '/')) {
+        pre = (char*)malloc(1);
+        *pre = '.';
+        a = arg;
+        suf = NULL;
+    }
+    // Not in current directory
+    else {
+        // Set up pre
+        // TODO: not just *, could be ? as well
+        position_1 = strchr(arg, '*')-arg;
+        while (position_1 >= 0) {
+            if((char)arg[position_1] == '/') {
+                pre = (char*)malloc(position_1+1);
+                strncpy(pre, arg, position_1+1);
+                break;
+            }
+            position_1--;
+        }
+    printf("--------pre: %s\n", pre);
+        // Set up a and suf
+        position_2 = position_1 + 1;
+        a = (char*)malloc(strlen(arg) - position_1);
+        char * args = a;
+        while ((char)arg[position_2]) {
+            if ((char)arg[position_2] != '/') {
+                *args = (char)arg[position_2];
+                args++;
+                position_2++;
+                suf = '\0';
+            }
+            else {
+                suf = (char*)malloc(strlen(pre) + strlen(a));
+                char * suffix = suf;
+                while ((char)arg[position_2]) {
+                    *suffix = (char)arg[position_2];
+                    suffix++;
+                    position_2++;
+                }
+                *suffix = '\0';
+                break;
+            }
+        }
+        *args = '\0';
+    printf("--------a: %s\n", a);
+    printf("--------suf: %s\n", suf);
+
+    }
+
+    char * reg = (char*)malloc(2*strlen(a) + 10);
+    // Convert a to the first arg that contains '*'
     char * r = reg;
+
+    // 2. Convert wildcard to regular expression
 
     *r = '^';
     r++;
@@ -104,7 +162,7 @@ SimpleCommand::expandWildcards(char * arg)
     r++;
     *r = '\0';
 
-    // 2. Compile regular expression
+    // 3. Compile regular expression
     regex_t re;
     int result = regcomp( &re, reg, REG_EXTENDED|REG_NOSUB);
     if( result != 0) {
@@ -115,7 +173,7 @@ SimpleCommand::expandWildcards(char * arg)
     // 3. List directory and add as arguments the entries
     // that match the regular expression
     DIR * dir;
-    dir = opendir(".");
+    dir = opendir(pre);
     if (dir == NULL) {
         perror("opendir");
         return;
@@ -126,7 +184,13 @@ SimpleCommand::expandWildcards(char * arg)
     while ( (ent = readdir(dir)) != NULL) {
         if (regexec( &re, ent->d_name, 1, &match, 0) == 0) {
             // Add argument
-            Command::_currentSimpleCommand->insertArgument(strdup(ent->d_name));
+            if (suf) {
+                // TODO:Combine pre and args with suf, then call expandWildcards again
+                Command::_currentSimpleCommand->insertArgument(strdup(ent->d_name));
+            }
+            else {
+                Command::_currentSimpleCommand->insertArgument(strdup(ent->d_name));
+            }
         }
     }
     closedir(dir);
@@ -233,7 +297,7 @@ Command::execute()
 	}
 
 	// Print contents of Command data structure
-	//print();
+	print();
 
 	// Add execution here
 	// For every simple command fork a new process
