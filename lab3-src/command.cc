@@ -22,6 +22,8 @@
 
 #include "command.h"
 
+static const int debug = 0;
+
 SimpleCommand::SimpleCommand()
 {
 	// Creat available space for 5 arguments
@@ -193,7 +195,7 @@ SimpleCommand::expandWildcards(char * arg)
         if (regexec( &re, ent->d_name, 1, &match, 0) == 0) {
             // Add argument
             if (suf) {
-                char * argument = (char*)malloc(strlen(pre)+strlen(ent->d_name)+strlen(suf));
+                char * argument = (char*)malloc(strlen(pre)+strlen(ent->d_name)+strlen(suf)+1);
 
                 strcpy(argument, pre);
                 strcat(argument, ent->d_name);
@@ -207,7 +209,7 @@ SimpleCommand::expandWildcards(char * arg)
                     Command::_currentSimpleCommand->insertArgument(strdup(ent->d_name));
                 }
                 else {
-                    char * argument = (char*)malloc(strlen(pre)+strlen(ent->d_name));
+                    char * argument = (char*)malloc(strlen(pre)+strlen(ent->d_name)+1);
                     strcpy(argument, pre);
                     strcat(argument, ent->d_name);
                     printf("--------argument: %s\n", argument);
@@ -321,7 +323,9 @@ Command::execute()
 	}
 
 	// Print contents of Command data structure
-	// print();
+    if (debug) {
+	    print();
+    }
 
 	// Add execution here
 	// For every simple command fork a new process
@@ -340,10 +344,38 @@ Command::execute()
 void
 Command::execute_command()
 {
+    // exit
     if( !strcmp(_simpleCommands[0]->_arguments[0], "exit")) {
         printf("Good bye!!\n");
         exit( 1 );
     }
+
+    // setenv
+    if( !strcmp(_simpleCommands[0]->_arguments[0], "setenv")) {
+        int result;
+        result = setenv(_simpleCommands[0]->_arguments[1], _simpleCommands[0]->_arguments[2], 1);
+        if(result == -1) {
+            perror("setenv");
+        }
+        clear();
+        prompt();
+        return;
+    }
+
+    // unsetenv
+    if( !strcmp(_simpleCommands[0]->_arguments[0], "unsetenv")) {
+        int result;
+        result = unsetenv(_simpleCommands[0]->_arguments[1]);
+        if(result == -1) {
+            perror("unsetenv");
+        }
+        clear();
+        prompt();
+        return;
+    }
+
+
+
     if (_out_flag > 1) {
         printf("Ambiguous output redirect\n");
     }
