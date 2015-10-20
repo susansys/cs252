@@ -14,6 +14,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <regex.h>
+#include <dirent.h>
 #include <string.h>
 #include <signal.h>
 #include <fcntl.h>
@@ -46,6 +48,89 @@ SimpleCommand::insertArgument( char * argument )
 	_numberOfArguments++;
 }
 
+void
+SimpleCommand::expandWildcardsIfNecessary(char * arg)
+{
+    // Return if arg contains '*' or '?'
+    if(!strchr(arg, '*') && !strchr(arg, '?')) {
+        Command::_currentSimpleCommand->insertArgument(arg);
+    }
+    SimpleCommand::expandWildcards(arg);
+}
+
+void
+SimpleCommand::expandWildcards(char * arg)
+{
+    // 1. Convert wildcard to regular expression
+    char * reg = (char*)malloc(2*strlen(arg) + 10);
+    // TODO: convert a to the first arg that contains '*'
+    char * a = arg;
+    char * r = reg;
+
+    *r = '^';
+    r++;
+
+    while (*a) {
+        // "*" -> ".*"
+        // "?" -> "."
+        // "." -> "\."
+
+        if (*a == '*') {
+            *r = '.';
+            r++;
+            *r = '*';
+            r++;
+        }
+        else if (*a == '?') {
+            *r = '.';
+            r++;
+        }
+        else if (*a == '.') {
+            *r = '\\';
+            r++;
+            *r = '.';
+            r++;
+        }
+        else {
+            *r = *a;
+            r++;
+        }
+        a++;
+    }
+    // match end of line and add null char
+    *r = '$';
+    r++;
+    *r = '\0';
+
+    // 2. Compile regular expression
+    regex_t re;
+    int result = regcomp( &re, reg, REG_EXTENDED|REG_NOSUB);
+    if( result != 0) {
+        perror("compile regx");
+        return;
+    }
+
+    // 3. List directory and add as arguments the entries
+    // that match the regular expression
+    DIR * dir;
+    dir = opendir(".");
+    if (dir == NULL) {
+        perror("opendir");
+        return;
+    }
+
+    struct dirent * ent;
+    regmatch_t match;
+    while ( (ent = readdir(dir)) != NULL) {
+        if (regexec( &re, ent->d_name, 1, &match, 0) == 0) {
+            // Add argument
+            Command::_currentSimpleCommand->insertArgument(strdup(ent->d_name));
+        }
+    }
+    closedir(dir);
+}
+
+
 Command::Command()
 {
 	// Create available space for one simple command
@@ -62,20 +147,6 @@ Command::Command()
     _out_flag = 0;
 }
 
-void
-Command::expandWildcardsIfNecessary(char * arg)
-{
-    // Return if arg does not contain '*' or '?'
-    while(*arg) {
-        if(strchr(arg, '*') && strchr(arg, '?')) {
-            Command::_currentSimpleCommand->insertArgument(arg);
-            return;
-        }
-        arg++;
-    }
-
-
-}
 
 void
 Command::insertSimpleCommand( SimpleCommand * simpleCommand )
@@ -160,7 +231,7 @@ Command::execute()
 	}
 
 	// Print contents of Command data structure
-	// print();
+	//print();
 
 	// Add execution here
 	// For every simple command fork a new process

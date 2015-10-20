@@ -3,6 +3,8 @@
 #define command_h
 
 // Command Data Structure
+
+
 struct SimpleCommand {
 	// Available space for arguments currently preallocated
 	int _numberOfAvailableArguments;
@@ -13,7 +15,9 @@ struct SimpleCommand {
 
 	SimpleCommand();
 	void insertArgument( char * argument );
-};
+    void expandWildcardsIfNecessary(char * arg);
+    void expandWildcards(char * arg);
+    };
 
 struct Command {
 	int _numberOfAvailableSimpleCommands;
@@ -28,13 +32,12 @@ struct Command {
 
 	void prompt();
 	void print();
-    void expandWildcardsIfNecessary(char * arg);
 	void execute();
     void execute_command();
 	void clear();
 
 	Command();
-	void insertSimpleCommand( SimpleCommand * simpleCommand );
+    void insertSimpleCommand( SimpleCommand * simpleCommand );
 
 	static Command _currentCommand;
 	static SimpleCommand *_currentSimpleCommand;
