@@ -321,7 +321,7 @@ Command::execute()
 	}
 
 	// Print contents of Command data structure
-	print();
+	// print();
 
 	// Add execution here
 	// For every simple command fork a new process
@@ -341,7 +341,7 @@ void
 Command::execute_command()
 {
     if( !strcmp(_simpleCommands[0]->_arguments[0], "exit")) {
-        printf("Bye!\n");
+        printf("Good bye!!\n");
         exit( 1 );
     }
     if (_out_flag > 1) {
@@ -549,8 +549,29 @@ SimpleCommand * Command::_currentSimpleCommand;
 
 int yyparse(void);
 
+void sigHandler(int sig) {
+    if(sig == SIGCHLD) {
+        while(waitpid(-1, 0, WNOHANG) > 0);
+    }
+    else if (sig == SIGINT) {
+        printf("\n");
+        Command::_currentCommand.prompt();
+    }
+}
+
 main()
 {
-	Command::_currentCommand.prompt();
+    Command::_currentCommand.prompt();
+    struct sigaction signalAction;
+	signalAction.sa_handler = &sigHandler;
+	sigemptyset(&signalAction.sa_mask);
+	signalAction.sa_flags = SA_RESTART;
+
+	int error = sigaction(SIGCHLD, &signalAction, NULL );
+	if ( error ) {
+	    perror( "sigaction" );
+	    exit( -1 );
+    }
+	error = sigaction(SIGINT, &signalAction, NULL);
 	yyparse();
 }
