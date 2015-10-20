@@ -55,7 +55,9 @@ SimpleCommand::expandWildcardsIfNecessary(char * arg)
     if(!strchr(arg, '*') && !strchr(arg, '?')) {
         Command::_currentSimpleCommand->insertArgument(arg);
     }
-    SimpleCommand::expandWildcards(arg);
+    else{
+        SimpleCommand::expandWildcards(arg);
+    }
 }
 
 void
