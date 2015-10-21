@@ -4,6 +4,7 @@
 
 // Command Data Structure
 
+int compare(const void *a, const void *b);
 
 struct SimpleCommand {
 	// Available space for arguments currently preallocated

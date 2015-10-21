@@ -9,6 +9,7 @@
  *
  */
 
+#include <string>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -23,6 +24,9 @@
 #include "command.h"
 
 static const int debug = 0;
+
+const std::string dot(".");
+const std::string two_dots("..");
 
 SimpleCommand::SimpleCommand()
 {
@@ -84,7 +88,19 @@ SimpleCommand::expandWildcards(char * arg)
     else {
         // Set up pre
         // TODO: not just *, could be ? as well
-        position_1 = strchr(arg, '*')-arg;
+        if (strchr(arg, '*') && strchr(arg, '?')) {
+            position_1 = std::min(strchr(arg, '*'),
+                    strchr(arg, '?')) - arg;
+        }
+        else if (strchr(arg, '*')) {
+            position_1 = strchr(arg, '*') - arg;
+        }
+        else if (strchr(arg, '?')) {
+            position_1 = strchr(arg, '?') - arg;
+        }
+        else {
+            position_1 = strrchr(arg, '/') - arg;
+        }
         while (position_1 >= 0) {
             if((char)arg[position_1] == '/') {
                 pre = (char*)malloc(position_1+2);
@@ -100,7 +116,7 @@ SimpleCommand::expandWildcards(char * arg)
             }
             position_1--;
         }
-    printf("--------pre: %s\n", pre);
+    //printf("--------pre: %s\n", pre);
         // Set up a and suf
         position_2 = position_1 + 1;
         a = (char*)malloc(strlen(arg) - position_1);
@@ -126,8 +142,8 @@ SimpleCommand::expandWildcards(char * arg)
             }
         }
         *args = '\0';
-    printf("--------a: %s\n", a);
-    printf("--------suf: %s\n", suf);
+    //printf("--------a: %s\n", a);
+    //printf("--------suf: %s\n", suf);
 
     }
 
@@ -185,7 +201,7 @@ SimpleCommand::expandWildcards(char * arg)
     DIR * dir;
     dir = opendir(pre);
     if (dir == NULL) {
-        perror("opendir");
+        //perror("opendir");
         return;
     }
 
@@ -194,13 +210,16 @@ SimpleCommand::expandWildcards(char * arg)
     while ( (ent = readdir(dir)) != NULL) {
         if (regexec( &re, ent->d_name, 1, &match, 0) == 0) {
             // Add argument
-            if (suf) {
+            if( ent->d_name == dot || ent->d_name == two_dots ) {
+                continue;
+            }
+            else if (suf) {
                 char * argument = (char*)malloc(strlen(pre)+strlen(ent->d_name)+strlen(suf)+1);
 
                 strcpy(argument, pre);
                 strcat(argument, ent->d_name);
                 strcat(argument, suf);
-                printf("--------argument: %s\n", argument);
+                //printf("--------argument: %s\n", argument);
 
                 Command::_currentSimpleCommand->expandWildcards(strdup(argument));
             }
@@ -212,7 +231,7 @@ SimpleCommand::expandWildcards(char * arg)
                     char * argument = (char*)malloc(strlen(pre)+strlen(ent->d_name)+1);
                     strcpy(argument, pre);
                     strcat(argument, ent->d_name);
-                    printf("--------argument: %s\n", argument);
+                    //printf("--------argument: %s\n", argument);
 
                     Command::_currentSimpleCommand->insertArgument(strdup(argument));
                 }
@@ -341,9 +360,39 @@ Command::execute()
 
 // Shell implementation
 
+int
+compare(const void *sa, const void *sb) {
+    const char *a = *(const char**)sa;
+    const char *b = *(const char**)sb;
+    return strcmp(a,b);
+}
+
 void
 Command::execute_command()
 {
+    // sort arguments first
+    for ( int i = 0; i < _numberOfSimpleCommands; i++ ) {
+        char * command_name = strdup(_simpleCommands[i]->_arguments[0]);
+        // qsort the whole argument list
+        if( _simpleCommands[i]->_numberOfArguments > 1) {
+            qsort((_simpleCommands[i]->_arguments),
+               _simpleCommands[i]->_numberOfArguments,
+               sizeof(*(_simpleCommands[i]->_arguments)),
+               compare);
+        }
+
+        for( int k = 0; k< _simpleCommands[i]->_numberOfArguments; k++) {
+            if(strcmp(_simpleCommands[i]->_arguments[k], command_name) == 0) {
+                while(k!=0) {
+                    char *tmp = _simpleCommands[i]->_arguments[k];
+                    _simpleCommands[i]->_arguments[k] = _simpleCommands[i]->_arguments[k-1];
+                    _simpleCommands[i]->_arguments[--k] = tmp;
+                }
+                break;
+            }
+        }
+    }
+
     // exit
     if( !strcmp(_simpleCommands[0]->_arguments[0], "exit")) {
         printf("Good bye!!\n");
@@ -374,7 +423,44 @@ Command::execute_command()
         return;
     }
 
+    // cd
+    if( !strcmp(_simpleCommands[0]->_arguments[0], "cd")) {
+        if(_simpleCommands[0]->_arguments[1]==0) {
+            int result;
+            result = chdir(getenv("HOME"));
+            if(result < 0) {
+                perror("cd");
+            }
+        }
+        else {
+            int result;
+            result = chdir(_simpleCommands[1]->_arguments[1]);
+            if(result<0) {
+                perror("cd");
+            }
+        }
+        clear();
+        prompt();
+        return;
+    }
 
+    // ~
+    if( _simpleCommands[0]->_arguments[1]!=0 && *(_simpleCommands[0]->_arguments[1]) == '~') {
+        // ls ~
+        if(strlen(_simpleCommands[0]->_arguments[1]) == 1) {
+            char * argument = (char*)malloc(strlen(getenv("HOME"))+1);
+            strcpy(argument, getenv("HOME"));
+            _simpleCommands[0]->_arguments[1] = argument;
+        }
+        // ls ~zhou267/dir
+        else {
+            char * argument = (char*)malloc(strlen("/homes/")+
+                    strlen(_simpleCommands[0]->_arguments[1])+1);
+            strcpy(argument, "/homes/");
+            strcat(argument, ++(_simpleCommands[0]->_arguments[1]));
+            _simpleCommands[0]->_arguments[1] = argument;
+        }
+    }
 
     if (_out_flag > 1) {
         printf("Ambiguous output redirect\n");
@@ -599,11 +685,11 @@ main()
 	sigemptyset(&signalAction.sa_mask);
 	signalAction.sa_flags = SA_RESTART;
 
-	int error = sigaction(SIGCHLD, &signalAction, NULL );
-	if ( error ) {
+	int result = sigaction(SIGCHLD, &signalAction, NULL );
+	if ( result ) {
 	    perror( "sigaction" );
 	    exit( -1 );
     }
-	error = sigaction(SIGINT, &signalAction, NULL);
+	result = sigaction(SIGINT, &signalAction, NULL);
 	yyparse();
 }
