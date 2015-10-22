@@ -23,7 +23,7 @@
 
 #include "command.h"
 
-static const int debug = 0;
+static const int debug = 1;
 
 const std::string dot(".");
 const std::string two_dots("..");
@@ -45,6 +45,46 @@ SimpleCommand::insertArgument( char * argument )
 		_arguments = (char **) realloc( _arguments,
 				  _numberOfAvailableArguments * sizeof( char * ) );
 	}
+
+    // environment variable expansion
+    char* expansion = (char*) malloc(sizeof(char*) * 1028);
+    if (strchr(argument, '$') && strchr(argument, '{')) {
+        int i = 0;
+        int j = 0;
+
+        while(argument[i] != '\0') {
+            // convert the env to the value
+            if (argument[i] == '$') {
+                char* var = (char*)malloc(strlen(argument));
+                i+=2;
+                while (argument[i] != '}') {
+                    var[j] = argument[i];
+                    i++;
+                    j++;
+                }
+                var[j] = '\0';
+                strcat(expansion, getenv(var));
+                free(var);
+                j = 0;
+            }
+            // copy other char to the argument
+            else {
+                char* var = (char*)malloc(strlen(argument));
+                while(argument[i] != '\0' && argument[i] != '$') {
+                    var[j] = argument[i];
+                    i++;
+                    j++;
+                }
+                var[j] = '\0';
+                strcat(expansion, var);
+                free(var);
+                j=0;
+                i--;
+            }
+            i++;
+        }
+        argument = strdup(expansion);
+    }
 
 	_arguments[ _numberOfArguments ] = argument;
 
@@ -71,6 +111,7 @@ SimpleCommand::expandWildcards(char * arg)
 {
     // 1. Set up all the variables
     // Set up pre
+    bool contains_dot = false;
     int position_1 = 0;
     int position_2 = 0;
     char * pre;
@@ -155,6 +196,9 @@ SimpleCommand::expandWildcards(char * arg)
 
     *r = '^';
     r++;
+    if(strchr(a, '.')) {
+        contains_dot = true;
+    }
 
     while (*a) {
         // "*" -> ".*"
@@ -210,7 +254,7 @@ SimpleCommand::expandWildcards(char * arg)
     while ( (ent = readdir(dir)) != NULL) {
         if (regexec( &re, ent->d_name, 1, &match, 0) == 0) {
             // Add argument
-            if( ent->d_name == dot || ent->d_name == two_dots ) {
+            if( !contains_dot && (ent->d_name == dot || ent->d_name == two_dots)) {
                 continue;
             }
             else if (suf) {
@@ -407,7 +451,7 @@ Command::execute_command()
             perror("setenv");
         }
         clear();
-        prompt();
+        // prompt();
         return;
     }
 
@@ -419,28 +463,7 @@ Command::execute_command()
             perror("unsetenv");
         }
         clear();
-        prompt();
-        return;
-    }
-
-    // cd
-    if( !strcmp(_simpleCommands[0]->_arguments[0], "cd")) {
-        if(_simpleCommands[0]->_arguments[1]==0) {
-            int result;
-            result = chdir(getenv("HOME"));
-            if(result < 0) {
-                perror("cd");
-            }
-        }
-        else {
-            int result;
-            result = chdir(_simpleCommands[1]->_arguments[1]);
-            if(result<0) {
-                perror("cd");
-            }
-        }
-        clear();
-        prompt();
+        // prompt();
         return;
     }
 
@@ -450,6 +473,7 @@ Command::execute_command()
         if(strlen(_simpleCommands[0]->_arguments[1]) == 1) {
             char * argument = (char*)malloc(strlen(getenv("HOME"))+1);
             strcpy(argument, getenv("HOME"));
+        printf("****the ~ expansion: %s\n", argument);
             _simpleCommands[0]->_arguments[1] = argument;
         }
         // ls ~zhou267/dir
@@ -459,7 +483,39 @@ Command::execute_command()
             strcpy(argument, "/homes/");
             strcat(argument, ++(_simpleCommands[0]->_arguments[1]));
             _simpleCommands[0]->_arguments[1] = argument;
+        //printf("****the ~ expansion: %s\n", _simpleCommands[0]->_arguments[1]);
         }
+    }
+
+    // cd
+    if( !strcmp(_simpleCommands[0]->_arguments[0], "cd")) {
+        int result;
+        // cd, dir not specified
+        if(_simpleCommands[0]->_arguments[1]==0) {
+
+            result = chdir(getenv("HOME"));
+        }
+        // cd cs252, relative path
+        //else if (*(_simpleCommands[0]->_arguments[1]) != '/') {
+            //char * path = (char*)malloc(128);
+            //path = get_current_dir_name();
+            //strcat(path, "/");
+            //strcat(path, _simpleCommands[0]->_arguments[1]);
+
+            //result = chdir(path);
+            //free(path);
+        //}
+        // cd /homes/cs252
+        else {
+        //printf("****the absolute path is : %s\n", _simpleCommands[0]->_arguments[1]);
+            result = chdir(_simpleCommands[1]->_arguments[1]);
+        }
+
+        if(result<0) {
+                perror("cd");
+        }
+        clear();
+        return;
     }
 
     if (_out_flag > 1) {
