@@ -23,10 +23,8 @@
 
 #include "command.h"
 
-static const int debug = 1;
-
-const std::string dot(".");
-const std::string two_dots("..");
+static const int debug = 0;
+static bool contains_wildcards = false;
 
 SimpleCommand::SimpleCommand()
 {
@@ -102,6 +100,7 @@ SimpleCommand::expandWildcardsIfNecessary(char * arg)
         Command::_currentSimpleCommand->insertArgument(arg);
     }
     else{
+        contains_wildcards = true;
         SimpleCommand::expandWildcards(arg);
     }
 }
@@ -120,15 +119,15 @@ SimpleCommand::expandWildcards(char * arg)
 
     // Current directory
     if (!strchr(arg, '/')) {
-        pre = (char*)malloc(1);
-        *pre = '.';
+        pre = (char*)malloc(2);
+        pre[0] = '.';
+        pre[1] = '\0';
         a = arg;
         suf = NULL;
     }
     // Not in current directory
     else {
         // Set up pre
-        // TODO: not just *, could be ? as well
         if (strchr(arg, '*') && strchr(arg, '?')) {
             position_1 = std::min(strchr(arg, '*'),
                     strchr(arg, '?')) - arg;
@@ -196,8 +195,12 @@ SimpleCommand::expandWildcards(char * arg)
 
     *r = '^';
     r++;
+
     if(strchr(a, '.')) {
         contains_dot = true;
+    }
+    else {
+        contains_dot = false;
     }
 
     while (*a) {
@@ -254,7 +257,7 @@ SimpleCommand::expandWildcards(char * arg)
     while ( (ent = readdir(dir)) != NULL) {
         if (regexec( &re, ent->d_name, 1, &match, 0) == 0) {
             // Add argument
-            if( !contains_dot && (ent->d_name == dot || ent->d_name == two_dots)) {
+            if( !contains_dot && ent->d_name[0]=='.') {
                 continue;
             }
             else if (suf) {
@@ -269,6 +272,7 @@ SimpleCommand::expandWildcards(char * arg)
             }
             else {
                 if(*pre == '.') {
+                    //printf("--------d_name: %s\n", ent->d_name);
                     Command::_currentSimpleCommand->insertArgument(strdup(ent->d_name));
                 }
                 else {
@@ -415,24 +419,26 @@ void
 Command::execute_command()
 {
     // sort arguments first
-    for ( int i = 0; i < _numberOfSimpleCommands; i++ ) {
-        char * command_name = strdup(_simpleCommands[i]->_arguments[0]);
-        // qsort the whole argument list
-        if( _simpleCommands[i]->_numberOfArguments > 1) {
-            qsort((_simpleCommands[i]->_arguments),
-               _simpleCommands[i]->_numberOfArguments,
-               sizeof(*(_simpleCommands[i]->_arguments)),
-               compare);
-        }
+    if (contains_wildcards) {
+        for ( int i = 0; i < _numberOfSimpleCommands; i++ ) {
+            char * command_name = strdup(_simpleCommands[i]->_arguments[0]);
+            // qsort the whole argument list
+            if( _simpleCommands[i]->_numberOfArguments > 1) {
+                qsort((_simpleCommands[i]->_arguments),
+                   _simpleCommands[i]->_numberOfArguments,
+                   sizeof(*(_simpleCommands[i]->_arguments)),
+                   compare);
+            }
 
-        for( int k = 0; k< _simpleCommands[i]->_numberOfArguments; k++) {
-            if(strcmp(_simpleCommands[i]->_arguments[k], command_name) == 0) {
-                while(k!=0) {
-                    char *tmp = _simpleCommands[i]->_arguments[k];
-                    _simpleCommands[i]->_arguments[k] = _simpleCommands[i]->_arguments[k-1];
-                    _simpleCommands[i]->_arguments[--k] = tmp;
+            for( int k = 0; k< _simpleCommands[i]->_numberOfArguments; k++) {
+                if(strcmp(_simpleCommands[i]->_arguments[k], command_name) == 0) {
+                    while(k!=0) {
+                        char *tmp = _simpleCommands[i]->_arguments[k];
+                        _simpleCommands[i]->_arguments[k] = _simpleCommands[i]->_arguments[k-1];
+                        _simpleCommands[i]->_arguments[--k] = tmp;
+                    }
+                    break;
                 }
-                break;
             }
         }
     }
@@ -489,28 +495,17 @@ Command::execute_command()
 
     // cd
     if( !strcmp(_simpleCommands[0]->_arguments[0], "cd")) {
-        int result;
+        int result = 0;
         // cd, dir not specified
         if(_simpleCommands[0]->_arguments[1]==0) {
 
             result = chdir(getenv("HOME"));
         }
-        // cd cs252, relative path
-        //else if (*(_simpleCommands[0]->_arguments[1]) != '/') {
-            //char * path = (char*)malloc(128);
-            //path = get_current_dir_name();
-            //strcat(path, "/");
-            //strcat(path, _simpleCommands[0]->_arguments[1]);
-
-            //result = chdir(path);
-            //free(path);
-        //}
         // cd /homes/cs252
         else {
-        //printf("****the absolute path is : %s\n", _simpleCommands[0]->_arguments[1]);
-            result = chdir(_simpleCommands[1]->_arguments[1]);
+            //printf("--------the absolute path is : %s\n", _simpleCommands[0]->_arguments[1]);
+            result = chdir(_simpleCommands[0]->_arguments[1]);
         }
-
         if(result<0) {
                 perror("cd");
         }
@@ -703,10 +698,10 @@ Command::execute_command()
     }
 
     if(!_background) {
-        if(waitpid(pid, 0, 0) == -1) {
-            perror("waitpid");
-        }
+        waitpid(pid, 0, 0);
+
     }
+    clear();
 }
 
 void
@@ -714,8 +709,8 @@ Command::prompt()
 {
     if(isatty(0)) {
 	    printf("myshell>");
+	    fflush(stdout);
     }
-	fflush(stdout);
 }
 
 Command Command::_currentCommand;
