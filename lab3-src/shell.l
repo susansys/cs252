@@ -11,12 +11,45 @@
 
 #include <string.h>
 #include "y.tab.h"
+/*#include <unistd.h>*/
 
-static  void yyunput (int c,char *buf_ptr  );
+/*static  void yyunput (int c,char *buf_ptr  );*/
 
-void myunputc(int c) {
-    unput(c);
-}
+/*void myunputc(int c) {*/
+    /*unput(c);*/
+/*}*/
+
+/*////////////  Start added code ///////////*/
+
+/*extern "C" char * read_line();*/
+
+/*int mygetc(FILE * f) {*/
+    /*static char *p;*/
+    /*char ch;*/
+
+    /*if (!isatty(0)) {*/
+        /*// stdin is not a tty. Call real getc*/
+        /*return getc(f);*/
+    /*}*/
+
+    /*// stdin is a tty. Call our read_line.*/
+
+    /*if (p==NULL || *p == 0) {*/
+        /*char * s = read_line();*/
+        /*p = s;*/
+    /*}*/
+
+    /*ch = *p;*/
+    /*p++;*/
+
+    /*return ch;*/
+/*}*/
+
+/*#undef getc*/
+/*#define getc(f) mygetc(f)*/
+
+/*/////////// End added code ///////////*/
+
 
 %}
 
@@ -64,7 +97,7 @@ void myunputc(int c) {
         int i = 0;
         int j = 0;
         for(i = 0; yytext[i] != '\0'; i++){
-            if(yytext[i] == 34){
+            if(yytext[i] == '"'){
                 continue;
             }
             string[j] = yytext[i];
@@ -80,14 +113,15 @@ void myunputc(int c) {
         int i = 0;
         int j = 0;
         for(i = 0; i != strlen(yytext); i++){
-            if(yytext[i] == 92){
-                // means escape char was hit
-                if(yytext[i+1] == 92){
+            // if it's \\, then change it to
+            if(yytext[i] == 92) {
+                if(yytext[i+1] == 92) {
                     string[j] = yytext[i+1];
                     i++;
                     j++;
                 }
             }
+            // copy everything else to string
             else {
                 string[j] = yytext[i];
                 j++;
