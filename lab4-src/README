@@ -1,0 +1,24 @@
+Part1: Thread Creation
+
+step 3:
+The program prints random order of A's, B's and C's forever.
+
+step 5:
+Because the main thread was executing the function `printC` forever, so the program can not reach those lines to create another two threads.
+
+
+Part3: Spin locks
+
+Time Table:
+                                            || System (Kernel) Time || User Time || Real Time ||
+------------------------------------------------------------------------------------------------
+pthread_mutex (count)                       || 1.230s               || 2.000s    || 1.929s    ||
+------------------------------------------------------------------------------------------------
+spin_lock (count_spin with thr_yield)       || 0.380s               || 2.330s    || 1.099s    ||
+------------------------------------------------------------------------------------------------
+spin_lock (count_spin without thr_yield)    || 0.000s               || 8.200s    || 3.879s    ||
+
+3.1 User Time is the amount of CPU time that used in executing the code. When no `thr_yield` is used, the CPU will spends most of time busy waiting for another thread to give up the CPU. However, when the `thr_yield` is used,
+the thread gives up the CPU when it hits locked section, so the time spent on waiting in the process is small.
+
+3.2 System Time is the amount of CPT time spent in

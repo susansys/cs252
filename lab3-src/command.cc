@@ -720,9 +720,11 @@ int yyparse(void);
 
 void sigHandler(int sig) {
     if(sig == SIGCHLD) {
+        // zombie
         while(waitpid(-1, 0, WNOHANG) > 0);
     }
     else if (sig == SIGINT) {
+        // ctrl-c
         printf("\n");
         Command::_currentCommand.prompt();
     }
@@ -741,6 +743,5 @@ main()
 	    perror( "sigaction" );
 	    exit( -1 );
     }
-	result = sigaction(SIGINT, &signalAction, NULL);
 	yyparse();
 }
