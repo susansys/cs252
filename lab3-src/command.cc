@@ -45,7 +45,7 @@ SimpleCommand::insertArgument( char * argument )
 	}
 
     // environment variable expansion
-    char* expansion = (char*) malloc(sizeof(char*) * 1028);
+    char* expansion = (char*) malloc(sizeof(char*) * 1024);
     if (strchr(argument, '$') && strchr(argument, '{')) {
         int i = 0;
         int j = 0;
@@ -709,8 +709,8 @@ Command::prompt()
 {
     if(isatty(0)) {
 	    printf("myshell>");
-	    fflush(stdout);
     }
+	fflush(stdout);
 }
 
 Command Command::_currentCommand;
@@ -743,5 +743,6 @@ main()
 	    perror( "sigaction" );
 	    exit( -1 );
     }
+    result = sigaction(SIGINT, &signalAction, NULL );
 	yyparse();
 }
