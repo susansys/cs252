@@ -10,7 +10,7 @@ daytime-server : daytime-server.o
 	$(CXX) -o $@ $@.o $(NETLIBS)
 
 myhttpd: myhttpd.o
-	$(CXX) -o $@ $@.o $(NETLIBS)
+	$(CXX) -pthread -o $@ $@.o $(NETLIBS)
 
 use-dlopen: use-dlopen.o
 	$(CXX) -o $@ $@.o $(NETLIBS) -ldl
